@@ -1,0 +1,86 @@
+name: Foodie Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  flutter-ci:
+    name: Flutter App Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: foodie_app
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze Code
+        run: flutter analyze
+
+      - name: Run Unit & Widget Tests
+        run: flutter test
+
+  backend-ci:
+    name: Node.js Backend & Postgres Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: foodie_backend
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: foodie_user
+          POSTGRES_PASSWORD: foodie_password
+          POSTGRES_DB: foodie_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: foodie_backend/package-lock.json
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Run Backend Tests
+        env:
+          DATABASE_URL: postgresql://foodie_user:foodie_password@localhost:5432/foodie_db
+          JWT_SECRET: super_secret_jwt_key
+          REFRESH_TOKEN_SECRET: super_secret_refresh_key
+          RAZORPAY_KEY_ID: mock_key_id
+          RAZORPAY_KEY_SECRET: mock_secret
+          ADMIN_KEY: super_secret_admin_key_123
+        run: npm test
