@@ -25,6 +25,15 @@ class CartState {
 
   int get totalPaise => subtotalPaise + deliveryFeePaise + taxPaise;
 
+  int getItemQuantity(String menuItemId) {
+    for (final item in items) {
+      if (item.menuItem.id == menuItemId) {
+        return item.quantity;
+      }
+    }
+    return 0;
+  }
+
   CartState copyWith({
     Restaurant? restaurant,
     List<CartItem>? items,

@@ -32,7 +32,7 @@ void main() {
       createdAt: DateTime.parse('2026-10-04T01:00:00.000Z'),
     );
 
-    test('Address.fromJson parses API response correctly', () {
+    test('Address.fromJson parses API response with numeric values correctly', () {
       final json = {
         'id': 'addr-1',
         'user_id': 'user-1',
@@ -53,7 +53,34 @@ void main() {
       expect(parsed.label, 'Home');
       expect(parsed.isDefault, isFalse);
       expect(parsed.lat, 12.9716);
+      expect(parsed.lng, 77.5946);
     });
+
+    test('Address.fromJson parses PostgreSQL string numeric lat and lng without error', () {
+      final json = {
+        'id': 'addr-pg-1',
+        'user_id': 'user-1',
+        'label': 'Work',
+        'line1': '456 Tech Park',
+        'line2': null,
+        'city': 'Bengaluru',
+        'pincode': '560037',
+        'lat': '12.9345000',
+        'lng': '77.6242000',
+        'is_default': true,
+        'created_at': '2026-10-04T01:00:00.000Z',
+      };
+
+      final parsed = Address.fromJson(json);
+
+      expect(parsed.id, 'addr-pg-1');
+      expect(parsed.label, 'Work');
+      expect(parsed.isDefault, isTrue);
+      expect(parsed.lat, 12.9345);
+      expect(parsed.lng, 77.6242);
+      expect(parsed.line2, isNull);
+    });
+
 
     test('AddressListState returns default address correctly', () {
       final stateWithDefault = AddressListState(

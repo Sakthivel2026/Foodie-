@@ -55,6 +55,36 @@ void main() {
       expect(menuItem.isAvailable, isTrue);
     });
 
+    test('MenuItem.fromJson parses joined cuisine & restaurant details correctly', () {
+      final italianItemJson = {
+        'id': 'b2222222-2222-2222-2222-222222222222',
+        'restaurant_id': 'c39a7977-943f-42ae-a7be-e5e78ec6b510',
+        'name': 'Margherita Pizza',
+        'description': 'Classic mozzarella, basil, and tomato sauce pizza',
+        'price_paise': 39900,
+        'image_url': 'http://10.0.2.2:3000/images/margherita.jpg',
+        'is_veg': true,
+        'category': 'Italian',
+        'is_available': true,
+        'created_at': '2026-10-04T00:00:00.000Z',
+        'restaurant_name': 'Toit Craft Brewery & Kitchen',
+        'restaurant_cuisine': 'Italian, Pizza, Continental',
+        'restaurant_rating': '4.6',
+        'delivery_time_min': 40,
+      };
+
+      final item = MenuItem.fromJson(italianItemJson);
+
+      expect(item.name, 'Margherita Pizza');
+      expect(item.pricePaise, 39900);
+      expect(item.isVeg, isTrue);
+      expect(item.category, 'Italian');
+      expect(item.displayRating, 4.6);
+      expect(item.displayDeliveryTime, 40);
+      expect(item.displayRestaurantName, 'Toit Craft Brewery & Kitchen');
+      expect(item.displayCuisine, 'Italian, Pizza, Continental');
+    });
+
     test('PaginatedRestaurants.fromJson parses pagination payload', () {
       final paginatedJson = {
         'data': [sampleRestaurantJson],

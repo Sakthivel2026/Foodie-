@@ -28,18 +28,23 @@ class Address {
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
       id: json['id'] as String,
-      userId: json['user_id'] as String,
+      userId: (json['user_id'] ?? json['userId']) as String,
       label: json['label'] as String,
       line1: json['line1'] as String,
       line2: json['line2'] as String?,
       city: json['city'] as String,
       pincode: json['pincode'] as String,
-      lat: (json['lat'] as num).toDouble(),
-      lng: (json['lng'] as num).toDouble(),
-      isDefault: json['is_default'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      lat: double.parse(json['lat'].toString()),
+      lng: double.parse(json['lng'].toString()),
+      isDefault: json['is_default'] as bool? ?? json['isDefault'] as bool? ?? false,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : (json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'] as String)
+              : DateTime.now()),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return {
@@ -84,4 +89,13 @@ class Address {
       createdAt: createdAt ?? this.createdAt,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Address && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
+

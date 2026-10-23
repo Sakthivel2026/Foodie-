@@ -78,4 +78,36 @@ class RestaurantRemoteDataSource {
       throw Failure.fromDioException(e);
     }
   }
+
+  Future<List<MenuItem>> getMenuItems({
+    String? search,
+    String? cuisine,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final queryParameters = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
+      if (search != null && search.trim().isNotEmpty) {
+        queryParameters['search'] = search.trim();
+      }
+      if (cuisine != null && cuisine.trim().isNotEmpty && cuisine != 'All') {
+        queryParameters['cuisine'] = cuisine.trim();
+      }
+
+      final response = await _dio.get(
+        '/restaurants/items',
+        queryParameters: queryParameters,
+      );
+
+      final data = response.data as Map<String, dynamic>;
+      final list = data['data'] as List<dynamic>;
+      return list.map((item) => MenuItem.fromJson(item as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw Failure.fromDioException(e);
+    }
+  }
 }
+

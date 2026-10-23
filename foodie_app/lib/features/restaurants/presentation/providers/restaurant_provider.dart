@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../data/datasources/restaurant_remote_data_source.dart';
+import '../../data/models/paginated_restaurants.dart';
 import '../../data/repositories/restaurant_repository_impl.dart';
 import '../../domain/entities/menu_item.dart';
 import '../../domain/entities/restaurant.dart';
@@ -15,6 +16,8 @@ final restaurantRepositoryProvider = Provider<RestaurantRepository>((ref) {
 
 class RestaurantListState {
   final List<Restaurant> restaurants;
+  final List<MenuItem> foodItems;
+  final bool isFoodView;
   final bool isLoading;
   final bool isFetchingMore;
   final String? errorMessage;
@@ -25,6 +28,8 @@ class RestaurantListState {
 
   const RestaurantListState({
     required this.restaurants,
+    this.foodItems = const [],
+    this.isFoodView = true,
     required this.isLoading,
     required this.isFetchingMore,
     this.errorMessage,
@@ -36,6 +41,8 @@ class RestaurantListState {
 
   factory RestaurantListState.initial() => const RestaurantListState(
         restaurants: [],
+        foodItems: [],
+        isFoodView: true,
         isLoading: true,
         isFetchingMore: false,
         errorMessage: null,
@@ -47,6 +54,8 @@ class RestaurantListState {
 
   RestaurantListState copyWith({
     List<Restaurant>? restaurants,
+    List<MenuItem>? foodItems,
+    bool? isFoodView,
     bool? isLoading,
     bool? isFetchingMore,
     String? errorMessage,
@@ -57,6 +66,8 @@ class RestaurantListState {
   }) {
     return RestaurantListState(
       restaurants: restaurants ?? this.restaurants,
+      foodItems: foodItems ?? this.foodItems,
+      isFoodView: isFoodView ?? this.isFoodView,
       isLoading: isLoading ?? this.isLoading,
       isFetchingMore: isFetchingMore ?? this.isFetchingMore,
       errorMessage: errorMessage,
@@ -90,15 +101,27 @@ class RestaurantListNotifier extends Notifier<RestaurantListState> {
 
     try {
       final repository = ref.read(restaurantRepositoryProvider);
-      final paginated = await repository.getRestaurants(
-        search: state.searchQuery,
-        cuisine: state.selectedCuisine,
-        page: 1,
-        limit: 10,
-      );
+      final results = await Future.wait([
+        repository.getRestaurants(
+          search: state.searchQuery,
+          cuisine: state.selectedCuisine,
+          page: 1,
+          limit: 10,
+        ),
+        repository.getMenuItems(
+          search: state.searchQuery,
+          cuisine: state.selectedCuisine,
+          page: 1,
+          limit: 50,
+        ),
+      ]);
+
+      final paginated = results[0] as PaginatedRestaurants;
+      final items = results[1] as List<MenuItem>;
 
       state = state.copyWith(
         restaurants: paginated.data,
+        foodItems: items,
         isLoading: false,
         page: paginated.page,
         totalPages: paginated.totalPages,
@@ -149,8 +172,13 @@ class RestaurantListNotifier extends Notifier<RestaurantListState> {
 
   void onCuisineSelected(String cuisine) {
     if (state.selectedCuisine == cuisine) return;
-    state = state.copyWith(selectedCuisine: cuisine);
+    state = state.copyWith(selectedCuisine: cuisine, isFoodView: true);
     loadRestaurants(refresh: true);
+  }
+
+  void toggleViewMode(bool isFoodView) {
+    if (state.isFoodView == isFoodView) return;
+    state = state.copyWith(isFoodView: isFoodView);
   }
 }
 

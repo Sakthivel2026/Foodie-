@@ -70,7 +70,7 @@ class AddressListNotifier extends Notifier<AddressListState> {
     }
   }
 
-  Future<bool> createAddress({
+  Future<Address?> createAddress({
     required String label,
     required String line1,
     String? line2,
@@ -82,7 +82,7 @@ class AddressListNotifier extends Notifier<AddressListState> {
   }) async {
     try {
       final repository = ref.read(addressRepositoryProvider);
-      await repository.createAddress(
+      final newAddress = await repository.createAddress(
         label: label,
         line1: line1,
         line2: line2,
@@ -93,14 +93,17 @@ class AddressListNotifier extends Notifier<AddressListState> {
         isDefault: isDefault,
       );
       await loadAddresses();
-      return true;
+      return newAddress;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString().replaceFirst('Failure: ', ''));
-      return false;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Failure: ', ''),
+      );
+      return null;
     }
   }
 
-  Future<bool> updateAddress({
+  Future<Address?> updateAddress({
     required String id,
     String? label,
     String? line1,
@@ -113,7 +116,7 @@ class AddressListNotifier extends Notifier<AddressListState> {
   }) async {
     try {
       final repository = ref.read(addressRepositoryProvider);
-      await repository.updateAddress(
+      final updated = await repository.updateAddress(
         id: id,
         label: label,
         line1: line1,
@@ -125,12 +128,16 @@ class AddressListNotifier extends Notifier<AddressListState> {
         isDefault: isDefault,
       );
       await loadAddresses();
-      return true;
+      return updated;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString().replaceFirst('Failure: ', ''));
-      return false;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Failure: ', ''),
+      );
+      return null;
     }
   }
+
 
   Future<void> setDefaultAddress(String id) async {
     await updateAddress(id: id, isDefault: true);

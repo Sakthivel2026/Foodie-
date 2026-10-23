@@ -14,6 +14,8 @@ class AddressRemoteDataSource {
       return list.map((item) => Address.fromJson(item as Map<String, dynamic>)).toList();
     } on DioException catch (e) {
       throw Failure.fromDioException(e);
+    } catch (e) {
+      throw Failure.unknown(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -45,6 +47,8 @@ class AddressRemoteDataSource {
       return Address.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw Failure.fromDioException(e);
+    } catch (e) {
+      throw Failure.unknown(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -74,6 +78,8 @@ class AddressRemoteDataSource {
       return Address.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw Failure.fromDioException(e);
+    } catch (e) {
+      throw Failure.unknown(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -82,6 +88,9 @@ class AddressRemoteDataSource {
       await _dio.delete('/addresses/$id');
     } on DioException catch (e) {
       throw Failure.fromDioException(e);
+    } catch (e) {
+      throw Failure.unknown(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 }
+

@@ -132,13 +132,18 @@ class TrackingNotifier extends Notifier<TrackingState> {
 
       _socket?.on('location_updated', (data) {
         if (data is Map && data['orderId'] == orderId) {
-          final lat = (data['lat'] as num?)?.toDouble();
-          final lng = (data['lng'] as num?)?.toDouble();
+          final lat = data['lat'] != null
+              ? double.tryParse(data['lat'].toString())
+              : null;
+          final lng = data['lng'] != null
+              ? double.tryParse(data['lng'].toString())
+              : null;
           if (lat != null && lng != null) {
             state = state.copyWith(driverLocation: LatLng(lat, lng));
           }
         }
       });
+
 
       _socket?.connect();
     } catch (_) {

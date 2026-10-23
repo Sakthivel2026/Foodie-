@@ -21,17 +21,19 @@ class AddressListScreen extends ConsumerWidget {
       ),
       body: _buildBody(context, ref, state, notifier, theme),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const AddEditAddressScreen(),
             ),
           );
+          notifier.loadAddresses();
         },
         icon: const Icon(Icons.add),
         label: const Text('Add New Address'),
       ),
+
     );
   }
 
@@ -138,13 +140,14 @@ class AddressListScreen extends ConsumerWidget {
                       PopupMenuButton<String>(
                         onSelected: (value) async {
                           if (value == 'edit') {
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
                                     AddEditAddressScreen(address: address),
                               ),
                             );
+                            notifier.loadAddresses();
                           } else if (value == 'default') {
                             await notifier.setDefaultAddress(address.id);
                           } else if (value == 'delete') {
@@ -161,9 +164,21 @@ class AddressListScreen extends ConsumerWidget {
                                     child: const Text('CANCEL'),
                                   ),
                                   ElevatedButton(
-                                    onPressed: () {
+                                    onPressed: () async {
                                       Navigator.pop(dialogContext);
-                                      notifier.deleteAddress(address.id);
+                                      final deleted = await notifier.deleteAddress(address.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(deleted
+                                                ? 'Address deleted successfully'
+                                                : 'Failed to delete address'),
+                                            backgroundColor: deleted
+                                                ? Colors.green.shade700
+                                                : theme.colorScheme.error,
+                                          ),
+                                        );
+                                      }
                                     },
                                     child: const Text('DELETE'),
                                   ),
@@ -171,6 +186,7 @@ class AddressListScreen extends ConsumerWidget {
                               ),
                             );
                           }
+
                         },
                         itemBuilder: (context) => [
                           const PopupMenuItem(

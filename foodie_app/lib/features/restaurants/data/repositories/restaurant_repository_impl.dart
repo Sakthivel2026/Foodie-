@@ -39,4 +39,19 @@ class RestaurantRepositoryImpl implements RestaurantRepository {
       category: category,
     );
   }
+
+  @override
+  Future<List<MenuItem>> getMenuItems({
+    String? search,
+    String? cuisine,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    return await _remoteDataSource.getMenuItems(
+      search: search,
+      cuisine: cuisine,
+      page: page,
+      limit: limit,
+    );
+  }
 }

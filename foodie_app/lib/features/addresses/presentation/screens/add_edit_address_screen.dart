@@ -84,11 +84,16 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
     setState(() => _isSubmitting = true);
 
     final notifier = ref.read(addressListNotifierProvider.notifier);
-    bool success;
+    final theme = Theme.of(context);
+    final isEditing = widget.address != null;
 
-    if (widget.address == null) {
-      success = await notifier.createAddress(
-        label: _labelController.text.trim(),
+    Address? savedAddress;
+
+    if (!isEditing) {
+      savedAddress = await notifier.createAddress(
+        label: _labelController.text.trim().isEmpty
+            ? 'Home'
+            : _labelController.text.trim(),
         line1: _line1Controller.text.trim(),
         line2: _line2Controller.text.trim(),
         city: _cityController.text.trim(),
@@ -98,9 +103,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
         isDefault: _isDefault,
       );
     } else {
-      success = await notifier.updateAddress(
+      savedAddress = await notifier.updateAddress(
         id: widget.address!.id,
-        label: _labelController.text.trim(),
+        label: _labelController.text.trim().isEmpty
+            ? 'Home'
+            : _labelController.text.trim(),
         line1: _line1Controller.text.trim(),
         line2: _line2Controller.text.trim(),
         city: _cityController.text.trim(),
@@ -111,12 +118,37 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
       );
     }
 
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
 
-    if (success && mounted) {
-      Navigator.pop(context);
+    if (savedAddress != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEditing
+                ? 'Address updated successfully!'
+                : 'Address added successfully!',
+          ),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Navigator.pop(context, savedAddress);
+    } else {
+      final errorMsg = ref.read(addressListNotifierProvider).errorMessage ??
+          'Failed to save address. Please check your details and try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: theme.colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -212,8 +244,12 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                         if (value == null || value.trim().isEmpty) {
                           return 'Enter pincode';
                         }
+                        if (value.trim().length < 5) {
+                          return 'Enter a valid pincode';
+                        }
                         return null;
                       },
+
                     ),
                   ),
                 ],

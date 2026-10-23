@@ -16,4 +16,11 @@ abstract class RestaurantRepository {
     String restaurantId, {
     String? category,
   });
+
+  Future<List<MenuItem>> getMenuItems({
+    String? search,
+    String? cuisine,
+    int page = 1,
+    int limit = 50,
+  });
 }

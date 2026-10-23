@@ -26,9 +26,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final checkoutNotifier = ref.read(checkoutNotifierProvider.notifier);
     final theme = Theme.of(context);
 
-    // Preselect default address if not manually picked yet
-    if (_selectedAddress == null && addressState.addresses.isNotEmpty) {
-      _selectedAddress = addressState.defaultAddress;
+    // Ensure selected address is valid and synced with latest addressState
+    if (addressState.addresses.isNotEmpty) {
+      if (_selectedAddress == null ||
+          !addressState.addresses.any((a) => a.id == _selectedAddress!.id)) {
+        _selectedAddress = addressState.defaultAddress ?? addressState.addresses.first;
+      } else {
+        _selectedAddress = addressState.addresses.firstWhere(
+          (a) => a.id == _selectedAddress!.id,
+          orElse: () => _selectedAddress!,
+        );
+      }
+    } else {
+      _selectedAddress = null;
     }
 
     ref.listen<CheckoutState>(checkoutNotifierProvider, (previous, next) {
@@ -94,8 +104,73 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             ),
             const SizedBox(height: 8),
 
-            if (addressState.isLoading)
-              const Center(child: CircularProgressIndicator())
+            if (addressState.isLoading && addressState.addresses.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (addressState.errorMessage != null && addressState.addresses.isEmpty)
+              Card(
+                elevation: 1,
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.error_outline, color: theme.colorScheme.error),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Failed to load saved addresses: ${addressState.errorMessage}',
+                              style: TextStyle(
+                                color: theme.colorScheme.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              ref.read(addressListNotifierProvider.notifier).loadAddresses();
+                            },
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Retry'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final newAddress = await Navigator.push<Address?>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AddEditAddressScreen(),
+                                ),
+                              );
+                              if (newAddress != null) {
+                                setState(() => _selectedAddress = newAddress);
+                                await ref.read(addressListNotifierProvider.notifier).loadAddresses();
+                              }
+                            },
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('Add Address'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              )
             else if (addressState.addresses.isEmpty)
               Card(
                 elevation: 1,
@@ -111,13 +186,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
+                        onPressed: () async {
+                          final newAddress = await Navigator.push<Address?>(
                             context,
                             MaterialPageRoute(
                               builder: (context) => const AddEditAddressScreen(),
                             ),
                           );
+                          if (newAddress != null) {
+                            setState(() => _selectedAddress = newAddress);
+                            await ref.read(addressListNotifierProvider.notifier).loadAddresses();
+                          }
                         },
                         icon: const Icon(Icons.add_location_alt),
                         label: const Text('Add Delivery Address'),
@@ -139,24 +218,30 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.location_on,
-                                  color: theme.colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                _selectedAddress?.label ?? 'Select Address',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                            ],
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on,
+                                    color: theme.colorScheme.primary),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    _selectedAddress?.label ?? 'Select Address',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold, fontSize: 16),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          TextButton(
+                          TextButton.icon(
                             onPressed: () => _showAddressSelectionModal(
                               context,
                               addressState.addresses,
                             ),
-                            child: const Text('CHANGE'),
+                            icon: const Icon(Icons.swap_horiz, size: 18),
+                            label: const Text('CHANGE'),
                           ),
                         ],
                       ),
@@ -174,6 +259,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 ),
               ),
             const SizedBox(height: 24),
+
 
             // Restaurant & Order Summary
             Text(
@@ -320,12 +406,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ],
                   )
                 : Text(
-                    checkoutState.status == CheckoutStatus.paymentFailed
-                        ? 'Retry Payment - ${CurrencyFormatter.formatPaise(cartState.totalPaise)}'
-                        : 'Place Order - ${CurrencyFormatter.formatPaise(cartState.totalPaise)}',
+                    _selectedAddress == null
+                        ? 'Select Delivery Address to Place Order'
+                        : (checkoutState.status == CheckoutStatus.paymentFailed
+                            ? 'Retry Payment - ${CurrencyFormatter.formatPaise(cartState.totalPaise)}'
+                            : 'Place Order - ${CurrencyFormatter.formatPaise(cartState.totalPaise)}'),
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+
           ),
         ),
       ),
@@ -351,44 +440,84 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   ) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (modalContext) {
         final theme = Theme.of(modalContext);
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Select Delivery Address',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const SizedBox(height: 12),
-              ...addresses.map((addr) {
-                final isSelected = _selectedAddress?.id == addr.id;
-                return ListTile(
-                  leading: Icon(
-                    isSelected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: isSelected ? theme.colorScheme.primary : null,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Select Delivery Address',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
-                  title: Text(addr.label,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${addr.line1}, ${addr.city}'),
-                  onTap: () {
-                    setState(() => _selectedAddress = addr);
-                    Navigator.pop(modalContext);
-                  },
-                );
-              }),
-            ],
+                  const SizedBox(height: 12),
+                  ...addresses.map((addr) {
+                    final isSelected = _selectedAddress?.id == addr.id;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        isSelected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        color: isSelected ? theme.colorScheme.primary : null,
+                      ),
+                      title: Text(addr.label,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${addr.line1}, ${addr.city} - ${addr.pincode}'),
+                      onTap: () {
+                        setState(() => _selectedAddress = addr);
+                        Navigator.pop(modalContext);
+                      },
+                    );
+                  }),
+                  const Divider(height: 24),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        color: theme.colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Add New Delivery Address',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(modalContext);
+                      final newAddress = await Navigator.push<Address?>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AddEditAddressScreen(),
+                        ),
+                      );
+                      if (newAddress != null) {
+                        setState(() => _selectedAddress = newAddress);
+                        await ref.read(addressListNotifierProvider.notifier).loadAddresses();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
 }
+
