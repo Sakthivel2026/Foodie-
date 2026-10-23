@@ -18,6 +18,15 @@ const addressIdParamSchema = z.object({
   id: z.string().uuid('Invalid address ID'),
 });
 
+function formatAddress(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    lat: typeof row.lat === 'number' ? row.lat : parseFloat(row.lat),
+    lng: typeof row.lng === 'number' ? row.lng : parseFloat(row.lng),
+  };
+}
+
 async function listAddresses(req, res) {
   const userId = req.user.id;
 
@@ -29,8 +38,9 @@ async function listAddresses(req, res) {
     [userId]
   );
 
-  return res.json(result.rows);
+  return res.json(result.rows.map(formatAddress));
 }
+
 
 async function createAddress(req, res) {
   const userId = req.user.id;
@@ -65,7 +75,7 @@ async function createAddress(req, res) {
     );
 
     await client.query('COMMIT');
-    return res.status(201).json(insertRes.rows[0]);
+    return res.status(201).json(formatAddress(insertRes.rows[0]));
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -73,6 +83,7 @@ async function createAddress(req, res) {
     client.release();
   }
 }
+
 
 async function updateAddress(req, res) {
   const userId = req.user.id;
@@ -120,8 +131,9 @@ async function updateAddress(req, res) {
     );
 
     await client.query('COMMIT');
-    return res.json(updateRes.rows[0]);
+    return res.json(formatAddress(updateRes.rows[0]));
   } catch (err) {
+
     await client.query('ROLLBACK');
     throw err;
   } finally {
