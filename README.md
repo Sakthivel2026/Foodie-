@@ -284,8 +284,8 @@ Contributions and suggestions are welcome. Open an issue to discuss a change, th
 
 **Sakthivel**
 
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [your-profile](https://www.linkedin.com/in/your-profile)
+- GitHub: [@Sakthivel](https://github.com/Sakthivel2026)
+- LinkedIn: [Sakthivel K]((https://www.linkedin.com/in/sakthivel-k-3a904b372/))
 
 ---
 
